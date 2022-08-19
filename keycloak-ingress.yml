@@ -1,0 +1,46 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+    nginx.ingress.kubernetes.io/server-snippet: |-
+      proxy_set_header X-Forwarded-For $host;
+      proxy_set_header X-Forwarded-Proto $scheme;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection ‘upgrade’;
+      proxy_set_header Host $host;
+      location ~* "^/auth/realms/master/metrics" {
+          return 301 /auth/realms/master;
+      }
+  creationTimestamp: "2022-08-18T08:43:20Z"
+  generation: 1
+  labels:
+    app: keycloak
+  name: keycloak
+  namespace: keycloak
+  ownerReferences:
+  - apiVersion: keycloak.org/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Keycloak
+    name: keycloak
+    uid: 2a01e3a8-b41f-4c5f-994a-b997f6345fb4
+  resourceVersion: "1731533"
+  uid: 3657b7c3-617e-41d1-9e3f-1453513fe0c9
+spec:
+  rules:
+  - host: keycloak.docker.internal
+    http:
+      paths:
+      - backend:
+          service:
+            name: keycloak
+            port:
+              number: 8443
+        path: /
+        pathType: ImplementationSpecific
+status:
+  loadBalancer:
+    ingress:
+    - hostname: localhost

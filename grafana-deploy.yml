@@ -1,0 +1,212 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "3"
+    meta.helm.sh/release-name: kube-prometheus-stack
+    meta.helm.sh/release-namespace: monitoring
+  creationTimestamp: "2022-08-19T07:15:28Z"
+  generation: 3
+  labels:
+    app.kubernetes.io/instance: kube-prometheus-stack
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/version: 9.0.5
+    helm.sh/chart: grafana-6.32.10
+  name: kube-prometheus-stack-grafana
+  namespace: monitoring
+  resourceVersion: "1736203"
+  uid: 8f78983e-1e27-4060-8b7c-427f37590786
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: kube-prometheus-stack
+      app.kubernetes.io/name: grafana
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/config: f66b52b9bb79fa784f79ac633d4c7923e972ef77ab75a5e203e63c33dafd9715
+        checksum/dashboards-json-config: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        checksum/sc-dashboard-provider-config: d42e0d2dcd340dd08e9f003be27a96730df30586f144193fbbe4dad7c11ce342
+        checksum/secret: ba3ff8df8b4d060205da1ad1d0c219aa855bcc81862a9964de900c1c2ec845c4
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/instance: kube-prometheus-stack
+        app.kubernetes.io/name: grafana
+    spec:
+      automountServiceAccountToken: true
+      containers:
+      - env:
+        - name: METHOD
+          value: WATCH
+        - name: LABEL
+          value: grafana_dashboard
+        - name: LABEL_VALUE
+          value: "1"
+        - name: LOG_LEVEL
+          value: INFO
+        - name: FOLDER
+          value: /tmp/dashboards
+        - name: RESOURCE
+          value: both
+        image: quay.io/kiwigrid/k8s-sidecar:1.19.2
+        imagePullPolicy: IfNotPresent
+        name: grafana-sc-dashboard
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /tmp/dashboards
+          name: sc-dashboard-volume
+      - env:
+        - name: METHOD
+          value: WATCH
+        - name: LABEL
+          value: grafana_datasource
+        - name: LABEL_VALUE
+          value: "1"
+        - name: FOLDER
+          value: /etc/grafana/provisioning/datasources
+        - name: RESOURCE
+          value: both
+        - name: REQ_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: admin-user
+              name: kube-prometheus-stack-grafana
+        - name: REQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: admin-password
+              name: kube-prometheus-stack-grafana
+        - name: REQ_URL
+          value: http://localhost:3000/api/admin/provisioning/datasources/reload
+        - name: REQ_METHOD
+          value: POST
+        image: quay.io/kiwigrid/k8s-sidecar:1.19.2
+        imagePullPolicy: IfNotPresent
+        name: grafana-sc-datasources
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/grafana/provisioning/datasources
+          name: sc-datasources-volume
+      - env:
+        - name: GF_SECURITY_ADMIN_USER
+          valueFrom:
+            secretKeyRef:
+              key: admin-user
+              name: kube-prometheus-stack-grafana
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: admin-password
+              name: kube-prometheus-stack-grafana
+        - name: GF_PATHS_DATA
+          value: /var/lib/grafana/
+        - name: GF_PATHS_LOGS
+          value: /var/log/grafana
+        - name: GF_PATHS_PLUGINS
+          value: /var/lib/grafana/plugins
+        - name: GF_PATHS_PROVISIONING
+          value: /etc/grafana/provisioning
+        image: grafana/grafana:9.0.5
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /api/health
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 30
+        name: grafana
+        ports:
+        - containerPort: 80
+          name: http-web
+          protocol: TCP
+        - containerPort: 3000
+          name: grafana
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /api/health
+            port: 3000
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/grafana/grafana.ini
+          name: config
+          subPath: grafana.ini
+        - mountPath: /var/lib/grafana
+          name: storage
+        - mountPath: /tmp/dashboards
+          name: sc-dashboard-volume
+        - mountPath: /etc/grafana/provisioning/dashboards/sc-dashboardproviders.yaml
+          name: sc-dashboard-provider
+          subPath: provider.yaml
+        - mountPath: /etc/grafana/provisioning/datasources
+          name: sc-datasources-volume
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: true
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 472
+        runAsGroup: 472
+        runAsUser: 472
+      serviceAccount: kube-prometheus-stack-grafana
+      serviceAccountName: kube-prometheus-stack-grafana
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: kube-prometheus-stack-grafana
+        name: config
+      - emptyDir: {}
+        name: storage
+      - emptyDir: {}
+        name: sc-dashboard-volume
+      - configMap:
+          defaultMode: 420
+          name: kube-prometheus-stack-grafana-config-dashboards
+        name: sc-dashboard-provider
+      - emptyDir: {}
+        name: sc-datasources-volume
+status:
+  availableReplicas: 1
+  conditions:
+  - lastTransitionTime: "2022-08-19T07:24:28Z"
+    lastUpdateTime: "2022-08-19T07:24:28Z"
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: "True"
+    type: Available
+  - lastTransitionTime: "2022-08-19T07:15:28Z"
+    lastUpdateTime: "2022-08-19T07:47:19Z"
+    message: ReplicaSet "kube-prometheus-stack-grafana-5c499bcb6f" has successfully
+      progressed.
+    reason: NewReplicaSetAvailable
+    status: "True"
+    type: Progressing
+  observedGeneration: 3
+  readyReplicas: 1
+  replicas: 1
+  updatedReplicas: 1
