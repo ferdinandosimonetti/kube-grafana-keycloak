@@ -18,7 +18,7 @@ metadata:
   name: keycloak-operator
   namespace: keycloak
 spec:
-  channel: alpha
+  channel: fast
   name: keycloak-operator
   source: operatorhubio-catalog
   sourceNamespace: olm
