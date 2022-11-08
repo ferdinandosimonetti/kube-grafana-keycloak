@@ -147,4 +147,4 @@ operatorgroup.operators.coreos.com/operatorgroup created
 subscription.operators.coreos.com/keycloak-operator created
 ```
 ### Keycloak instance
-
+**SOMETHING BROKEN HERE, I'm currently figuring out the reason**
