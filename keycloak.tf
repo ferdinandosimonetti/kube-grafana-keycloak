@@ -10,8 +10,9 @@ terraform {
 provider "keycloak" {
   client_id                = "admin-cli"
   username                 = "admin"
-  password                 = "vQNDR42hAipZTQ=="
-  url                      = "https://keycloak.docker.internal"
+  password                 = "admin"
+#  url                      = "https://keycloak.docker.internal"
+  url                      = "http://172.21.127.84:9090"
   tls_insecure_skip_verify = true
 }
 locals {

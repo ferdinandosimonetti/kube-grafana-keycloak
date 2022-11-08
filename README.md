@@ -140,11 +140,68 @@ deployment "packageserver" successfully rolled out
 ## Installing Keycloak 
 
 ### Keycloak Operator
+As per instructions here https://www.keycloak.org/operator/installation#_vanilla_kubernetes_installation
+
+First the CRDs
 ```
-ferdi@DESKTOP-NL6I2OD:~/kube-grafana-keycloak$ kubectl create --save-config -f 04-keycloak-operator.yaml 
+kubectl apply -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/20.0.1/kubernetes/keycloaks.k8s.keycloak.org-v1.yml
+kubectl apply -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/20.0.1/kubernetes/keycloakrealmimports.k8s.keycloak.org-v1.yml
+```
+Then the Operator
+```
+[kind|default] ferdi@DESKTOP-NL6I2OD:~/kube-grafana-keycloak$ kubectl create ns keycloak
 namespace/keycloak created
-operatorgroup.operators.coreos.com/operatorgroup created
-subscription.operators.coreos.com/keycloak-operator created
+[kind|default] ferdi@DESKTOP-NL6I2OD:~/kube-grafana-keycloak$ kubie ns keycloak
+[kind|keycloak] ferdi@DESKTOP-NL6I2OD:~/kube-grafana-keycloak$ kubectl apply -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/20.0.1/kubernetes/kubernetes.yml
+serviceaccount/keycloak-operator created
+service/keycloak-operator created
+role.rbac.authorization.k8s.io/keycloak-operator-role created
+rolebinding.rbac.authorization.k8s.io/keycloak-operator-role-binding created
+rolebinding.rbac.authorization.k8s.io/keycloak-operator-view created
+rolebinding.rbac.authorization.k8s.io/keycloakcontroller-role-binding created
+rolebinding.rbac.authorization.k8s.io/keycloakrealmimportcontroller-role-binding created
+clusterrole.rbac.authorization.k8s.io/keycloakcontroller-cluster-role created
+clusterrole.rbac.authorization.k8s.io/keycloakrealmimportcontroller-cluster-role created
+deployment.apps/keycloak-operator created
 ```
 ### Keycloak instance
-**SOMETHING BROKEN HERE, I'm currently figuring out the reason**
+Actually, the file **04-keycloak-instance** creates a Keycloak through Operator... that fails because it needs TLS additional configurations and resources.
+
+I've downloaded this https://raw.githubusercontent.com/keycloak/keycloak-quickstarts/latest/kubernetes-examples/keycloak.yaml and modified to avoid the LoadBalancer: filename is **04alt-keycloak.yaml**, it starts a Keycloak in DEV mode, without HTTPS
+```
+[kind|keycloak] ferdi@DESKTOP-NL6I2OD:~/kube-grafana-keycloak$ kubectl apply -f 04alt-keycloak.yaml 
+service/keycloak created
+deployment.apps/keycloak created
+```
+
+### Keycloak Ingress - part 1
+Now, we're going to deploy an appropriate Ingress
+```
+[kind|keycloak] ferdi@DESKTOP-NL6I2OD:~/kube-grafana-keycloak$ kubectl apply -f 04alt-keycloak-ingress.yml 
+ingress.networking.k8s.io/keycloak created
+```
+When pointing your browser to https://keycloak.docker.internal:8443 you'll be gratified by this
+
+![Keycloak Homepage](04alt-keycloak-homepage.png)
+
+You won't be able to reach the beloved Administration Console, though, because of redirection to https://keycloak.docker.internal
+
+### Keycloak Ingress - part 2
+But someone else is going to help us: https://dev.to/aws-builders/keycloak-with-nginx-ingress-6fo
+
+You'll need to edit NGINX's Config Map
+```
+[kind|keycloak] ferdi@DESKTOP-NL6I2OD:~/kube-grafana-keycloak$ kubie ns ingress-nginx
+[kind|ingress-nginx] ferdi@DESKTOP-NL6I2OD:~/kube-grafana-keycloak$ kubectl get cm
+NAME                       DATA   AGE
+ingress-nginx-controller   1      3h2m
+kube-root-ca.crt           1      3h2m
+[kind|ingress-nginx] ferdi@DESKTOP-NL6I2OD:~/kube-grafana-keycloak$ kubectl edit cm ingress-nginx-controller
+```
+by adding these three values to the *data* section
+```
+use-forwarded-headers: "true"
+forwarded-for-header: "X-Forwarded-For"
+proxy: edge
+``` 
+
